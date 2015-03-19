@@ -2,7 +2,7 @@ The Evil File Content Replacer
 ==============================
 
 This small programs demonstrates it’s entirely feasible to exploit
-a race condition like `some-programm file file.new && mv file.new file`.
+a race condition like `some-programm file > file.new && mv file.new file`.
 
 Usage: `./efcr desired-input file-to-watch`
 
