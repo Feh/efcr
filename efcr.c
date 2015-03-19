@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <sys/sendfile.h>
@@ -31,7 +32,17 @@ int check_for_close(char *path)
 
 void replace_evil_content(char *path)
 {
+	int fd;
+	struct stat st;
+
 	D("Replacing contents...");
+	fd = open(path, O_WRONLY | O_TRUNC);
+	assert(fd != -1);
+	assert(fstat(in_fd, &st) != -1);
+	lseek(in_fd, 0, SEEK_SET);
+	sendfile(fd, in_fd, NULL, st.st_size);
+	close(fd);
+	D("... done.");
 }
 
 int main(int argc, char *argv[])
