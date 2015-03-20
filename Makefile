@@ -1,2 +1,2 @@
 efcr: efcr.c
-	gcc -Wall -g efcr.c -o efcr
+	gcc -Wall -g -O2 efcr.c -o efcr

